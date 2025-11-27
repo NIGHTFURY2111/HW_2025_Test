@@ -23,6 +23,7 @@ public class PlayerMovementhandler : MonoBehaviour
     {
         Vector3 horizontalVelocity = InputToGlobalPlane(inputManager.Move()) * speed;
         rb.linearVelocity = new Vector3(horizontalVelocity.x, rb.linearVelocity.y, horizontalVelocity.z);
+        Debug.Log(rb.linearVelocity.magnitude);
     }
 
     private Vector3 InputToGlobalPlane(Vector2 inputVector)

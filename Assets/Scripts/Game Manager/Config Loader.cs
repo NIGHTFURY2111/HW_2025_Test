@@ -49,7 +49,6 @@ public class ConfigLoader : ScriptableObject
         }
         catch (Exception e)
         {
-            Debug.LogError($"Failed to parse config: {e.Message}");
         }
     }
 

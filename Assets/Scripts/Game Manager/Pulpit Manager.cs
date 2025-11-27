@@ -23,7 +23,6 @@ public class PulpitManager : MonoBehaviour
     {
         pulpitData = data;
         lastSpawnPosition = startPosition;
-        Debug.Log($"[PulpitManager] Initialize - min: {data.min_pulpit_destroy_time}, max: {data.max_pulpit_destroy_time}, spawn: {data.pulpit_spawn_time}");
         SpawnInitialPulpit();
     }
     
@@ -31,7 +30,6 @@ public class PulpitManager : MonoBehaviour
     {
         if (pulpitData == null)
         {
-            Debug.LogWarning("[PulpitManager] Update - pulpitData is NULL!");
             return;
         }
         
@@ -41,7 +39,6 @@ public class PulpitManager : MonoBehaviour
     
     private void SpawnInitialPulpit()
     {
-        Debug.Log($"[PulpitManager] SpawnInitialPulpit at position: {startPosition}");
         SpawnPulpitAt(startPosition);
     }
     
@@ -65,7 +62,6 @@ public class PulpitManager : MonoBehaviour
         if (oldestPulpit != null && oldestPulpit.ShouldSpawnNext(pulpitData.pulpit_spawn_time))
         {
             Vector3 newPosition = GetNextPulpitPosition();
-            Debug.Log($"[PulpitManager] Spawning next pulpit at: {newPosition}");
             SpawnPulpitAt(newPosition);
         }
     }
@@ -74,7 +70,6 @@ public class PulpitManager : MonoBehaviour
     {
         if (pulpitPrefab == null)
         {
-            Debug.LogError("[PulpitManager] SpawnPulpitAt - pulpitPrefab is NULL!");
             return;
         }
         
@@ -84,18 +79,12 @@ public class PulpitManager : MonoBehaviour
         if (pulpit != null)
         {
             float lifetime = pulpitData.GetRandomDestroyTime();
-            Debug.Log($"[PulpitManager] SpawnPulpitAt - Pulpit created with lifetime: {lifetime}s");
             pulpit.Initialize(lifetime);
             pulpit.OnPulpitDestroyed += HandlePulpitDestroyed;
             pulpit.OnPlayerEntered += HandlePlayerEntered;
             
             activePulpits.Add(pulpit);
             lastSpawnPosition = position;
-            Debug.Log($"[PulpitManager] Active pulpits count: {activePulpits.Count}");
-        }
-        else
-        {
-            Debug.LogError("[PulpitManager] SpawnPulpitAt - Pulpit component not found on prefab!");
         }
     }
     
@@ -142,7 +131,6 @@ public class PulpitManager : MonoBehaviour
     
     private void HandlePulpitDestroyed(Pulpit pulpit)
     {
-        Debug.Log($"[PulpitManager] HandlePulpitDestroyed");
         pulpit.OnPulpitDestroyed -= HandlePulpitDestroyed;
         pulpit.OnPlayerEntered -= HandlePlayerEntered;
         
@@ -154,7 +142,6 @@ public class PulpitManager : MonoBehaviour
     
     private void HandlePlayerEntered(Pulpit pulpit)
     {
-        Debug.Log($"[PulpitManager] HandlePlayerEntered - Invoking score event");
         OnPulpitVisited?.Invoke(1);
     }
     

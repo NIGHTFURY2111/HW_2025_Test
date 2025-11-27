@@ -36,7 +36,6 @@ public class GameManager : MonoBehaviour
     private void HandlePulpitVisited(int points)
     {
         currentScore += points;
-        Debug.Log($"Score Updated: {currentScore}");
     }
     
     public int GetCurrentScore()

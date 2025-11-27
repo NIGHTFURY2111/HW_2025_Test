@@ -1,15 +1,18 @@
 using UnityEngine;
 using DG.Tweening;
 using System;
+using TMPro;
 
 [RequireComponent(typeof(Collider))]
 public class Pulpit : MonoBehaviour
 {
     [Header("Visual Settings")]
-    [SerializeField] private MeshRenderer meshRenderer;
     [SerializeField] private Color normalColor = Color.green;
     [SerializeField] private Color warningColor = Color.yellow;
     [SerializeField] private Color dangerColor = Color.red;
+    
+    [Header("Timer Display")]
+    [SerializeField] private TMP_Text timerText;
     
     [Header("Animation Settings")]
     [SerializeField] private float spawnDuration = 0.5f;
@@ -22,10 +25,9 @@ public class Pulpit : MonoBehaviour
     private bool hasPlayerVisited;
     private Material pulpitMaterial;
     private Vector3 originalScale;
+    private Vector3 timerOriginalScale;
     private Tween colorTween;
     private Tween scaleTween;
-    private bool isInWarningState;
-    private bool isInDangerState;
     
     public event Action<Pulpit> OnPulpitDestroyed;
     public event Action<Pulpit> OnPlayerEntered;
@@ -33,20 +35,17 @@ public class Pulpit : MonoBehaviour
     private void Awake()
     {
         originalScale = transform.localScale;
-        Debug.Log($"[Pulpit] Awake - originalScale: {originalScale}");
+        
+        if (timerText != null)
+        {
+            timerOriginalScale = timerText.transform.localScale;
+        }
     }
     
     private void OnEnable()
     {
-        if (meshRenderer != null)
-        {
-            pulpitMaterial = meshRenderer.material;
-            Debug.Log($"[Pulpit] OnEnable - Material assigned: {pulpitMaterial != null}");
-        }
-        else
-        {
-            Debug.LogError($"[Pulpit] OnEnable - MeshRenderer is NULL!");
-        }
+        TryGetComponent<MeshRenderer>(out MeshRenderer meshRenderer);
+        pulpitMaterial = meshRenderer.material;
         PlaySpawnAnimation();
     }
     
@@ -60,16 +59,13 @@ public class Pulpit : MonoBehaviour
         lifetime = lifetimeValue;
         elapsedTime = 0f;
         hasPlayerVisited = false;
-        isInWarningState = false;
-        isInDangerState = false;
-        
-        Debug.Log($"[Pulpit] Initialize - Lifetime: {lifetime}s, Warning at: {lifetime * warningThreshold}s, Danger at: {lifetime * dangerThreshold}s");
         
         if (pulpitMaterial != null)
         {
             pulpitMaterial.color = normalColor;
-            Debug.Log($"[Pulpit] Initialize - Set color to: {normalColor}");
         }
+        
+        UpdateTimerDisplay();
     }
     
     public void UpdateTimer(float deltaTime)
@@ -79,13 +75,11 @@ public class Pulpit : MonoBehaviour
         float timeRemaining = lifetime - elapsedTime;
         float normalizedTime = timeRemaining / lifetime;
         
-        Debug.Log($"[Pulpit] UpdateTimer - Elapsed: {elapsedTime:F2}s / {lifetime:F2}s, Normalized: {normalizedTime:F2}, Material: {pulpitMaterial != null}");
-        
+        UpdateTimerDisplay();
         UpdateVisualFeedback(normalizedTime);
         
         if (elapsedTime >= lifetime)
         {
-            Debug.Log($"[Pulpit] UpdateTimer - Lifetime reached! Destroying pulpit.");
             DestroyPulpit();
         }
     }
@@ -95,28 +89,39 @@ public class Pulpit : MonoBehaviour
         return elapsedTime >= spawnTime;
     }
     
+    private void UpdateTimerDisplay()
+    {
+        if (timerText == null) return;
+        
+        float timeRemaining = Mathf.Max(0, lifetime - elapsedTime);
+        timerText.text = timeRemaining.ToString("F1") + "s";
+        
+        float normalizedTime = timeRemaining / lifetime;
+        
+        if (normalizedTime <= dangerThreshold)
+        {
+            timerText.color = dangerColor;
+        }
+        else if (normalizedTime <= warningThreshold)
+        {
+            timerText.color = warningColor;
+        }
+        else
+        {
+            timerText.color = Color.white;
+        }
+    }
+    
     private void UpdateVisualFeedback(float normalizedTime)
     {
-        if (pulpitMaterial == null)
-        {
-            Debug.LogError($"[Pulpit] UpdateVisualFeedback - Material is NULL!");
-            return;
-        }
+        if (pulpitMaterial == null) return;
         
-        Debug.Log($"[Pulpit] UpdateVisualFeedback - NormTime: {normalizedTime:F2}, Warning: {!isInWarningState}, Danger: {!isInDangerState}");
-        
-        if (normalizedTime <= dangerThreshold && !isInDangerState)
+        if (normalizedTime <= dangerThreshold)
         {
-            Debug.Log($"[Pulpit] ENTERING DANGER STATE (normTime: {normalizedTime:F2} <= {dangerThreshold})");
-            isInDangerState = true;
-            isInWarningState = false;
             AnimateToDangerState();
         }
-        else if (normalizedTime <= warningThreshold && normalizedTime > dangerThreshold && !isInWarningState)
+        else if (normalizedTime <= warningThreshold && normalizedTime > dangerThreshold)
         {
-            Debug.Log($"[Pulpit] ENTERING WARNING STATE (normTime: {normalizedTime:F2} <= {warningThreshold})");
-            isInWarningState = true;
-            isInDangerState = false;
             AnimateToWarningState();
         }
     }
@@ -131,45 +136,58 @@ public class Pulpit : MonoBehaviour
         if (pulpitMaterial != null)
         {
             pulpitMaterial.color = normalColor;
-            Debug.Log($"[Pulpit] PlaySpawnAnimation - Color set to: {pulpitMaterial.color}");
+        }
+        
+        if (timerText != null)
+        {
+            timerText.transform.localScale = Vector3.zero;
+            timerText.transform.DOScale(timerOriginalScale, spawnDuration)
+                .SetEase(Ease.OutBack)
+                .SetDelay(0.2f);
         }
     }
     
     private void AnimateToWarningState()
     {
         KillColorTween();
+        KillTimerTweens();
         
         if (pulpitMaterial != null)
         {
-            Debug.Log($"[Pulpit] AnimateToWarningState - Starting tween from {pulpitMaterial.color} to {warningColor}");
-            
             colorTween = DOTween.To(() => pulpitMaterial.color, 
                 x => pulpitMaterial.color = x, 
                 warningColor, 
                 0.5f)
                 .SetEase(Ease.InOutSine)
-                .SetTarget(pulpitMaterial)
-                .OnUpdate(() => Debug.Log($"[Pulpit] WARNING Tween Update - Color: {pulpitMaterial.color}"))
-                .OnComplete(() => Debug.Log($"[Pulpit] WARNING Tween Complete"));
+                .SetTarget(pulpitMaterial);
+        }
+        
+        if (timerText != null)
+        {
+            timerText.DOFade(0.5f, 0.3f).SetLoops(-1, LoopType.Yoyo).SetTarget(timerText);
         }
     }
     
     private void AnimateToDangerState()
     {
         KillColorTween();
+        KillTimerTweens();
         
         if (pulpitMaterial != null)
         {
-            Debug.Log($"[Pulpit] AnimateToDangerState - Starting loop tween from {pulpitMaterial.color} to {dangerColor}");
-            
             colorTween = DOTween.To(() => pulpitMaterial.color, 
                 x => pulpitMaterial.color = x, 
                 dangerColor, 
                 0.3f)
                 .SetEase(Ease.InOutSine)
                 .SetLoops(-1, LoopType.Yoyo)
-                .SetTarget(pulpitMaterial)
-                .OnUpdate(() => Debug.Log($"[Pulpit] DANGER Tween Update - Color: {pulpitMaterial.color}"));
+                .SetTarget(pulpitMaterial);
+        }
+        
+        if (timerText != null)
+        {
+            timerText.DOFade(0.2f, 0.2f).SetLoops(-1, LoopType.Yoyo).SetTarget(timerText);
+            timerText.transform.DOPunchScale(Vector3.one * 0.2f, 0.5f, 5, 0.5f).SetLoops(-1).SetTarget(timerText.transform);
         }
     }
     
@@ -182,6 +200,12 @@ public class Pulpit : MonoBehaviour
         scaleTween = transform.DOScale(Vector3.zero, destroyDuration)
             .SetEase(Ease.InBack)
             .OnComplete(() => Destroy(gameObject));
+            
+        if (timerText != null)
+        {
+            timerText.transform.DOScale(Vector3.zero, destroyDuration)
+                .SetEase(Ease.InBack);
+        }
     }
     
     private void OnTriggerEnter(Collider other)
@@ -197,12 +221,27 @@ public class Pulpit : MonoBehaviour
     private void PlayLandAnimation()
     {
         transform.DOPunchScale(Vector3.one * 0.1f, 0.3f, 5, 0.5f);
+        
+        if (timerText != null)
+        {
+            timerText.transform.DOPunchScale(Vector3.one * 0.3f, 0.3f, 5, 0.5f);
+        }
     }
     
     private void KillTweens()
     {
         KillColorTween();
         KillScaleTween();
+        KillTimerTweens();
+    }
+    
+    private void KillTimerTweens()
+    {
+        if (timerText != null)
+        {
+            DOTween.Kill(timerText);
+            DOTween.Kill(timerText.transform);
+        }
     }
     
     private void KillColorTween()
@@ -210,7 +249,6 @@ public class Pulpit : MonoBehaviour
         if (colorTween != null && colorTween.IsActive())
         {
             colorTween.Kill();
-            Debug.Log($"[Pulpit] Color tween killed");
         }
     }
     
