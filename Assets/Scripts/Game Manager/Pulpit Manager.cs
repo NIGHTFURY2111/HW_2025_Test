@@ -145,7 +145,7 @@ public class PulpitManager : MonoBehaviour
         OnPulpitVisited?.Invoke(1);
     }
     
-    private void OnDestroy()
+    public void CleanupPulpits()
     {
         foreach (Pulpit pulpit in activePulpits)
         {
@@ -153,7 +153,14 @@ public class PulpitManager : MonoBehaviour
             {
                 pulpit.OnPulpitDestroyed -= HandlePulpitDestroyed;
                 pulpit.OnPlayerEntered -= HandlePlayerEntered;
+                Destroy(pulpit.gameObject);
             }
         }
+        activePulpits.Clear();
+    }
+    
+    private void OnDestroy()
+    {
+        CleanupPulpits();
     }
 }
