@@ -23,11 +23,12 @@ public class GameUIManager : MonoBehaviour
     
     private void Awake()
     {
-        if (startButton != null)
-            startButton.onClick.AddListener(HandleStartGame);
-        
-        if (restartButton != null)
-            restartButton.onClick.AddListener(HandleRestartGame);
+        SubscribeToButtons();
+    }
+    
+    private void Start()
+    {
+        ShowStartScreen();
     }
     
     private void OnEnable()
@@ -41,10 +42,28 @@ public class GameUIManager : MonoBehaviour
         GameManager.OnGameStart -= ShowHUD;
         GameManager.OnGameOver -= ShowGameOver;
     }
-    
-    private void Start()
+
+    private void OnDestroy()
     {
-        ShowStartScreen();
+        UnsubscribeFromButtons();
+    }
+    
+    private void SubscribeToButtons()
+    {
+        if (startButton != null)
+            startButton.onClick.AddListener(HandleStartGame);
+        
+        if (restartButton != null)
+            restartButton.onClick.AddListener(HandleRestartGame);
+    }
+    
+    private void UnsubscribeFromButtons()
+    {
+        if (startButton != null)
+            startButton.onClick.RemoveListener(HandleStartGame);
+        
+        if (restartButton != null)
+            restartButton.onClick.RemoveListener(HandleRestartGame);
     }
     
     private void ShowStartScreen()
@@ -53,11 +72,7 @@ public class GameUIManager : MonoBehaviour
         SetPanelActive(gameOverPanel, false);
         SetPanelActive(hudPanel, false);
         
-        if (startPanel != null)
-        {
-            startPanel.transform.localScale = Vector3.zero;
-            startPanel.transform.DOScale(Vector3.one, 0.5f).SetEase(Ease.OutBack);
-        }
+        AnimatePanelEntry(startPanel);
     }
     
     private void ShowHUD()
@@ -72,38 +87,28 @@ public class GameUIManager : MonoBehaviour
         SetPanelActive(hudPanel, false);
         SetPanelActive(gameOverPanel, true);
         
-        // Get final score
-        GameManager gameManager = FindObjectOfType<GameManager>();
-        if (gameManager != null && finalScoreText != null)
-        {
-            int finalScore = gameManager.GetCurrentScore();
-            finalScoreText.text = $"Final Score: {finalScore}";
-        }
-        
-        if (gameOverPanel != null)
-        {
-            gameOverPanel.transform.localScale = Vector3.zero;
-            gameOverPanel.transform.DOScale(Vector3.one, 0.5f).SetEase(Ease.OutBack);
-        }
+        UpdateFinalScore();
+        AnimatePanelEntry(gameOverPanel);
     }
     
     private void HandleStartGame()
     {
         OnStartGame?.Invoke();
-        
-        if (startButton != null)
-        {
-            startButton.transform.DOPunchScale(Vector3.one * 0.2f, 0.3f, 5, 0.5f);
-        }
+        AnimateButtonPress(startButton);
     }
     
     private void HandleRestartGame()
     {
         OnRestartGame?.Invoke();
-        
-        if (restartButton != null)
+        AnimateButtonPress(restartButton);
+    }
+    
+    private void UpdateFinalScore()
+    {
+        GameManager gameManager = FindObjectOfType<GameManager>();
+        if (gameManager != null && finalScoreText != null)
         {
-            restartButton.transform.DOPunchScale(Vector3.one * 0.2f, 0.3f, 5, 0.5f);
+            finalScoreText.text = $"Final Score: {gameManager.GetCurrentScore()}";
         }
     }
     
@@ -115,12 +120,19 @@ public class GameUIManager : MonoBehaviour
         }
     }
     
-    private void OnDestroy()
+    private void AnimatePanelEntry(GameObject panel)
     {
-        if (startButton != null)
-            startButton.onClick.RemoveListener(HandleStartGame);
+        if (panel == null) return;
         
-        if (restartButton != null)
-            restartButton.onClick.RemoveListener(HandleRestartGame);
+        panel.transform.localScale = Vector3.zero;
+        panel.transform.DOScale(Vector3.one, 0.5f).SetEase(Ease.OutBack);
+    }
+    
+    private void AnimateButtonPress(Button button)
+    {
+        if (button != null)
+        {
+            button.transform.DOPunchScale(Vector3.one * 0.2f, 0.3f, 5, 0.5f);
+        }
     }
 }

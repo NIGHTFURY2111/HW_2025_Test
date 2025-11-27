@@ -1,14 +1,16 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+/// <summary>
+/// ScriptableObject-based input manager that interfaces with Unity's Input System.
+/// Provides centralized access to player input actions.
+/// </summary>
 [CreateAssetMenu(fileName = "RawInputManager", menuName = "Input/Raw Input Manager")]
-public class RawInputManager : ScriptableObject,InputSystem_Actions.IPlayerActions
+public class RawInputManager : ScriptableObject, InputSystem_Actions.IPlayerActions
 {
-
     private InputSystem_Actions input;
-    private InputValueStorage MoveStorage;
+    private InputValueStorage moveStorage;
 
-    #region Input System Callback initialization
     private void OnEnable()
     {
         input ??= new InputSystem_Actions();
@@ -20,16 +22,12 @@ public class RawInputManager : ScriptableObject,InputSystem_Actions.IPlayerActio
     {
         input?.Player.Disable();
     }
-    #endregion
 
     public void OnMove(InputAction.CallbackContext context)
     {
-        MoveStorage ??= new InputValueStorage();
-        MoveStorage.UpdateValue(context.ReadValue<Vector2>());
+        moveStorage ??= new InputValueStorage();
+        moveStorage.UpdateValue(context.ReadValue<Vector2>());
     }
 
-    public Vector2 Move()
-    {
-        return MoveStorage?.GetValue ?? Vector2.zero;
-    }
+    public Vector2 Move() => moveStorage?.GetValue ?? Vector2.zero;
 }

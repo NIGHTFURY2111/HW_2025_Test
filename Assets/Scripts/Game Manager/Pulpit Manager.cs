@@ -1,7 +1,11 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
-using System;
 
+/// <summary>
+/// Manages pulpit spawning, lifecycle, and player interaction tracking.
+/// Maintains a maximum of 2 active pulpits at any time.
+/// </summary>
 public class PulpitManager : MonoBehaviour
 {
     [Header("References")]
@@ -12,33 +16,31 @@ public class PulpitManager : MonoBehaviour
     [SerializeField] private Vector3 startPosition = Vector3.zero;
     [SerializeField] private float pulpitSize = 9f;
     
+    private const int MAX_PULPITS = 2;
+    
     private PulpitData pulpitData;
     private List<Pulpit> activePulpits = new List<Pulpit>();
     private Vector3 lastSpawnPosition;
-    private const int MAX_PULPITS = 2;
     
     public static event Action<int> OnPulpitVisited;
+    
+    private void Update()
+    {
+        if (pulpitData == null) return;
+        
+        UpdatePulpitTimers();
+        CheckSpawnNewPulpit();
+    }
+
+    private void OnDestroy()
+    {
+        CleanupPulpits();
+    }
     
     public void Initialize(PulpitData data)
     {
         pulpitData = data;
         lastSpawnPosition = startPosition;
-        SpawnInitialPulpit();
-    }
-    
-    void Update()
-    {
-        if (pulpitData == null)
-        {
-            return;
-        }
-        
-        UpdatePulpitTimers();
-        CheckSpawnNewPulpit();
-    }
-    
-    private void SpawnInitialPulpit()
-    {
         SpawnPulpitAt(startPosition);
     }
     
@@ -55,37 +57,32 @@ public class PulpitManager : MonoBehaviour
     
     private void CheckSpawnNewPulpit()
     {
-        if (activePulpits.Count == 0) return;
-        if (activePulpits.Count >= MAX_PULPITS) return;
+        if (activePulpits.Count == 0 || activePulpits.Count >= MAX_PULPITS) 
+            return;
         
         Pulpit oldestPulpit = activePulpits[0];
         if (oldestPulpit != null && oldestPulpit.ShouldSpawnNext(pulpitData.pulpit_spawn_time))
         {
-            Vector3 newPosition = GetNextPulpitPosition();
-            SpawnPulpitAt(newPosition);
+            SpawnPulpitAt(GetNextPulpitPosition());
         }
     }
     
     private void SpawnPulpitAt(Vector3 position)
     {
-        if (pulpitPrefab == null)
-        {
-            return;
-        }
+        if (pulpitPrefab == null) return;
         
         GameObject pulpitObj = Instantiate(pulpitPrefab, position, Quaternion.identity, pulpitParent);
         Pulpit pulpit = pulpitObj.GetComponent<Pulpit>();
         
-        if (pulpit != null)
-        {
-            float lifetime = pulpitData.GetRandomDestroyTime();
-            pulpit.Initialize(lifetime);
-            pulpit.OnPulpitDestroyed += HandlePulpitDestroyed;
-            pulpit.OnPlayerEntered += HandlePlayerEntered;
-            
-            activePulpits.Add(pulpit);
-            lastSpawnPosition = position;
-        }
+        if (pulpit == null) return;
+        
+        float lifetime = pulpitData.GetRandomDestroyTime();
+        pulpit.Initialize(lifetime);
+        pulpit.OnPulpitDestroyed += HandlePulpitDestroyed;
+        pulpit.OnPlayerEntered += HandlePlayerEntered;
+        
+        activePulpits.Add(pulpit);
+        lastSpawnPosition = position;
     }
     
     private Vector3 GetNextPulpitPosition()
@@ -134,10 +131,7 @@ public class PulpitManager : MonoBehaviour
         pulpit.OnPulpitDestroyed -= HandlePulpitDestroyed;
         pulpit.OnPlayerEntered -= HandlePlayerEntered;
         
-        if (activePulpits.Contains(pulpit))
-        {
-            activePulpits.Remove(pulpit);
-        }
+        activePulpits.Remove(pulpit);
     }
     
     private void HandlePlayerEntered(Pulpit pulpit)
@@ -157,10 +151,5 @@ public class PulpitManager : MonoBehaviour
             }
         }
         activePulpits.Clear();
-    }
-    
-    private void OnDestroy()
-    {
-        CleanupPulpits();
     }
 }

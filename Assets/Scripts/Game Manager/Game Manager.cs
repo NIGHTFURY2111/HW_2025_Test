@@ -3,28 +3,33 @@ using System;
 
 public class GameManager : MonoBehaviour
 {
-    [SerializeField] PlayerMovementhandler PlayerMovement;
-    [SerializeField] PulpitManager pulpitManager;
-    [SerializeField] RawInputManager inputManager;
-    [SerializeField] public ConfigLoader configLoader;
+    [Header("References")]
+    [SerializeField] private PlayerMovementhandler playerMovement;
+    [SerializeField] private PulpitManager pulpitManager;
+    [SerializeField] private RawInputManager inputManager;
+    [SerializeField] private ConfigLoader configLoader;
     
-    private int currentScore = 0;
-    private bool isGameActive = false;
+    private int currentScore;
+    private bool isGameActive;
     
     public static event Action OnGameOver;
     public static event Action OnGameStart;
     
-    void Start()
+    private void Start()
     {
-        configLoader.LoadConfig();
-        PlayerMovement.Initialize(configLoader.GetPlayerData(), inputManager);
-        
+        InitializeGame();
         SubscribeToEvents();
     }
 
-    void Update()
+    private void OnDestroy()
     {
-        //Debug.Log(inputManager.Move());
+        UnsubscribeFromEvents();
+    }
+    
+    private void InitializeGame()
+    {
+        configLoader.LoadConfig();
+        playerMovement.Initialize(configLoader.GetPlayerData(), inputManager);
     }
     
     private void SubscribeToEvents()
@@ -45,6 +50,7 @@ public class GameManager : MonoBehaviour
     
     private void HandlePulpitVisited(int points)
     {
+        if (!isGameActive) return;
         currentScore += points;
     }
     
@@ -59,7 +65,7 @@ public class GameManager : MonoBehaviour
         currentScore = 0;
         
         pulpitManager.Initialize(configLoader.GetPulpitData());
-        PlayerMovement.ResetPlayer();
+        playerMovement.ResetPlayer();
         
         OnGameStart?.Invoke();
     }
@@ -78,18 +84,7 @@ public class GameManager : MonoBehaviour
         StartGame();
     }
     
-    public int GetCurrentScore()
-    {
-        return currentScore;
-    }
+    public int GetCurrentScore() => currentScore;
     
-    public bool IsGameActive()
-    {
-        return isGameActive;
-    }
-    
-    private void OnDestroy()
-    {
-        UnsubscribeFromEvents();
-    }
+    public bool IsGameActive() => isGameActive;
 }

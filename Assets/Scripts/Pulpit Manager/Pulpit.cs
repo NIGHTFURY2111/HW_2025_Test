@@ -3,6 +3,9 @@ using DG.Tweening;
 using System;
 using TMPro;
 
+/// <summary>
+/// Manages individual pulpit behavior including lifecycle, animations, and player detection.
+/// </summary>
 [RequireComponent(typeof(Collider))]
 public class Pulpit : MonoBehaviour
 {
@@ -37,25 +40,34 @@ public class Pulpit : MonoBehaviour
     
     private void Awake()
     {
-        originalScale = transform.localScale;
-        
-        if (timerText != null)
-        {
-            timerOriginalScale = timerText.transform.localScale;
-            timerOriginalRotation = timerText.transform.localRotation;
-        }
+        CacheOriginalTransforms();
     }
     
     private void OnEnable()
     {
-        TryGetComponent(out MeshRenderer meshRenderer);
-        pulpitMaterial = meshRenderer.material;
+        InitializeMaterial();
         PlaySpawnAnimation();
     }
     
     private void OnDisable()
     {
         KillTweens();
+    }
+
+    private void OnDestroy()
+    {
+        KillTweens();
+        DestroyMaterial();
+    }
+    
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Player") && !hasPlayerVisited)
+        {
+            hasPlayerVisited = true;
+            OnPlayerEntered?.Invoke(this);
+            PlayLandAnimation();
+        }
     }
     
     public void Initialize(float lifetimeValue)
@@ -78,8 +90,7 @@ public class Pulpit : MonoBehaviour
     {
         elapsedTime += deltaTime;
         
-        float timeRemaining = lifetime - elapsedTime;
-        float normalizedTime = timeRemaining / lifetime;
+        float normalizedTime = (lifetime - elapsedTime) / lifetime;
         
         UpdateTimerDisplay();
         UpdateVisualFeedback(normalizedTime);
@@ -90,9 +101,25 @@ public class Pulpit : MonoBehaviour
         }
     }
     
-    public bool ShouldSpawnNext(float spawnTime)
+    public bool ShouldSpawnNext(float spawnTime) => elapsedTime >= spawnTime;
+    
+    private void CacheOriginalTransforms()
     {
-        return elapsedTime >= spawnTime;
+        originalScale = transform.localScale;
+        
+        if (timerText != null)
+        {
+            timerOriginalScale = timerText.transform.localScale;
+            timerOriginalRotation = timerText.transform.localRotation;
+        }
+    }
+    
+    private void InitializeMaterial()
+    {
+        if (TryGetComponent<MeshRenderer>(out MeshRenderer meshRenderer))
+        {
+            pulpitMaterial = meshRenderer.material;
+        }
     }
     
     private void UpdateTimerDisplay()
@@ -104,18 +131,9 @@ public class Pulpit : MonoBehaviour
         
         float normalizedTime = timeRemaining / lifetime;
         
-        if (normalizedTime <= dangerThreshold)
-        {
-            timerText.color = dangerColor;
-        }
-        else if (normalizedTime <= warningThreshold)
-        {
-            timerText.color = warningColor;
-        }
-        else
-        {
-            timerText.color = Color.white;
-        }
+        timerText.color = normalizedTime <= dangerThreshold ? dangerColor :
+                         normalizedTime <= warningThreshold ? warningColor : 
+                         Color.white;
     }
     
     private void UpdateVisualFeedback(float normalizedTime)
@@ -155,10 +173,7 @@ public class Pulpit : MonoBehaviour
             timerText.transform.DOScale(timerOriginalScale, spawnDuration)
                 .SetEase(Ease.OutBack)
                 .SetDelay(0.2f)
-                .OnComplete(() => {
-                    timerText.transform.localScale = timerOriginalScale;
-                    timerText.transform.localRotation = timerOriginalRotation;
-                });
+                .OnComplete(ResetTimerTransform);
         }
     }
     
@@ -212,7 +227,6 @@ public class Pulpit : MonoBehaviour
     private void DestroyPulpit()
     {
         KillTweens();
-        
         OnPulpitDestroyed?.Invoke(this);
         
         scaleTween = transform.DOScale(Vector3.zero, destroyDuration)
@@ -221,24 +235,12 @@ public class Pulpit : MonoBehaviour
             
         if (timerText != null)
         {
-            timerText.transform.DOScale(Vector3.zero, destroyDuration)
-                .SetEase(Ease.InBack);
-        }
-    }
-    
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag("Player") && !hasPlayerVisited)
-        {
-            hasPlayerVisited = true;
-            OnPlayerEntered?.Invoke(this);
-            PlayLandAnimation();
+            timerText.transform.DOScale(Vector3.zero, destroyDuration).SetEase(Ease.InBack);
         }
     }
     
     private void PlayLandAnimation()
     {
-        // Store current scale and rotation before punch
         Vector3 currentScale = transform.localScale;
         
         transform.DOPunchScale(Vector3.one * 0.1f, 0.3f, 5, 0.5f)
@@ -249,11 +251,16 @@ public class Pulpit : MonoBehaviour
             Vector3 currentTimerScale = timerText.transform.localScale;
             
             timerText.transform.DOPunchScale(Vector3.one * 0.3f, 0.3f, 5, 0.5f)
-                .OnComplete(() => {
-                    timerText.transform.localScale = currentTimerScale;
-                    timerText.transform.localRotation = timerOriginalRotation;
-                });
+                .OnComplete(ResetTimerTransform);
         }
+    }
+    
+    private void ResetTimerTransform()
+    {
+        if (timerText == null) return;
+        
+        timerText.transform.localScale = timerOriginalScale;
+        timerText.transform.localRotation = timerOriginalRotation;
     }
     
     private void KillTweens()
@@ -262,16 +269,10 @@ public class Pulpit : MonoBehaviour
         KillScaleTween();
         KillTimerTweens();
         
-        // Ensure transforms are reset
         if (!gameObject.activeSelf) return;
         
         transform.localScale = originalScale;
-        
-        if (timerText != null)
-        {
-            timerText.transform.localScale = timerOriginalScale;
-            timerText.transform.localRotation = timerOriginalRotation;
-        }
+        ResetTimerTransform();
     }
     
     private void KillTimerTweens()
@@ -299,10 +300,8 @@ public class Pulpit : MonoBehaviour
         }
     }
     
-    private void OnDestroy()
+    private void DestroyMaterial()
     {
-        KillTweens();
-        
         if (pulpitMaterial != null)
         {
             Destroy(pulpitMaterial);
