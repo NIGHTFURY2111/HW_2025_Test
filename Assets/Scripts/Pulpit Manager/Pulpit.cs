@@ -26,8 +26,11 @@ public class Pulpit : MonoBehaviour
     private Material pulpitMaterial;
     private Vector3 originalScale;
     private Vector3 timerOriginalScale;
+    private Quaternion timerOriginalRotation;
     private Tween colorTween;
     private Tween scaleTween;
+    private bool isInWarningState;
+    private bool isInDangerState;
     
     public event Action<Pulpit> OnPulpitDestroyed;
     public event Action<Pulpit> OnPlayerEntered;
@@ -39,12 +42,13 @@ public class Pulpit : MonoBehaviour
         if (timerText != null)
         {
             timerOriginalScale = timerText.transform.localScale;
+            timerOriginalRotation = timerText.transform.localRotation;
         }
     }
     
     private void OnEnable()
     {
-        TryGetComponent<MeshRenderer>(out MeshRenderer meshRenderer);
+        TryGetComponent(out MeshRenderer meshRenderer);
         pulpitMaterial = meshRenderer.material;
         PlaySpawnAnimation();
     }
@@ -59,6 +63,8 @@ public class Pulpit : MonoBehaviour
         lifetime = lifetimeValue;
         elapsedTime = 0f;
         hasPlayerVisited = false;
+        isInWarningState = false;
+        isInDangerState = false;
         
         if (pulpitMaterial != null)
         {
@@ -116,12 +122,16 @@ public class Pulpit : MonoBehaviour
     {
         if (pulpitMaterial == null) return;
         
-        if (normalizedTime <= dangerThreshold)
+        if (normalizedTime <= dangerThreshold && !isInDangerState)
         {
+            isInDangerState = true;
+            isInWarningState = false;
             AnimateToDangerState();
         }
-        else if (normalizedTime <= warningThreshold && normalizedTime > dangerThreshold)
+        else if (normalizedTime <= warningThreshold && normalizedTime > dangerThreshold && !isInWarningState)
         {
+            isInWarningState = true;
+            isInDangerState = false;
             AnimateToWarningState();
         }
     }
@@ -131,7 +141,8 @@ public class Pulpit : MonoBehaviour
         transform.localScale = Vector3.zero;
         
         scaleTween = transform.DOScale(originalScale, spawnDuration)
-            .SetEase(Ease.OutBack);
+            .SetEase(Ease.OutBack)
+            .OnComplete(() => transform.localScale = originalScale);
         
         if (pulpitMaterial != null)
         {
@@ -143,7 +154,11 @@ public class Pulpit : MonoBehaviour
             timerText.transform.localScale = Vector3.zero;
             timerText.transform.DOScale(timerOriginalScale, spawnDuration)
                 .SetEase(Ease.OutBack)
-                .SetDelay(0.2f);
+                .SetDelay(0.2f)
+                .OnComplete(() => {
+                    timerText.transform.localScale = timerOriginalScale;
+                    timerText.transform.localRotation = timerOriginalRotation;
+                });
         }
     }
     
@@ -187,7 +202,10 @@ public class Pulpit : MonoBehaviour
         if (timerText != null)
         {
             timerText.DOFade(0.2f, 0.2f).SetLoops(-1, LoopType.Yoyo).SetTarget(timerText);
-            timerText.transform.DOPunchScale(Vector3.one * 0.2f, 0.5f, 5, 0.5f).SetLoops(-1).SetTarget(timerText.transform);
+            timerText.transform.DOPunchScale(Vector3.one * 0.2f, 0.5f, 5, 0.5f)
+                .SetLoops(-1)
+                .SetTarget(timerText.transform)
+                .OnStepComplete(() => timerText.transform.localScale = timerOriginalScale);
         }
     }
     
@@ -220,11 +238,21 @@ public class Pulpit : MonoBehaviour
     
     private void PlayLandAnimation()
     {
-        transform.DOPunchScale(Vector3.one * 0.1f, 0.3f, 5, 0.5f);
+        // Store current scale and rotation before punch
+        Vector3 currentScale = transform.localScale;
+        
+        transform.DOPunchScale(Vector3.one * 0.1f, 0.3f, 5, 0.5f)
+            .OnComplete(() => transform.localScale = currentScale);
         
         if (timerText != null)
         {
-            timerText.transform.DOPunchScale(Vector3.one * 0.3f, 0.3f, 5, 0.5f);
+            Vector3 currentTimerScale = timerText.transform.localScale;
+            
+            timerText.transform.DOPunchScale(Vector3.one * 0.3f, 0.3f, 5, 0.5f)
+                .OnComplete(() => {
+                    timerText.transform.localScale = currentTimerScale;
+                    timerText.transform.localRotation = timerOriginalRotation;
+                });
         }
     }
     
@@ -233,6 +261,17 @@ public class Pulpit : MonoBehaviour
         KillColorTween();
         KillScaleTween();
         KillTimerTweens();
+        
+        // Ensure transforms are reset
+        if (!gameObject.activeSelf) return;
+        
+        transform.localScale = originalScale;
+        
+        if (timerText != null)
+        {
+            timerText.transform.localScale = timerOriginalScale;
+            timerText.transform.localRotation = timerOriginalRotation;
+        }
     }
     
     private void KillTimerTweens()
