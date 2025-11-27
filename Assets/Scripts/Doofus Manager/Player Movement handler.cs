@@ -21,8 +21,8 @@ public class PlayerMovementhandler : MonoBehaviour
 
     private void FixedUpdate()
     {
-        Debug.Log(InputToGlobalPlane(inputManager.Move()) * speed);
-        rb.linearVelocity = InputToGlobalPlane(inputManager.Move()) * speed;
+        Vector3 horizontalVelocity = InputToGlobalPlane(inputManager.Move()) * speed;
+        rb.linearVelocity = new Vector3(horizontalVelocity.x, rb.linearVelocity.y, horizontalVelocity.z);
     }
 
     private Vector3 InputToGlobalPlane(Vector2 inputVector)
