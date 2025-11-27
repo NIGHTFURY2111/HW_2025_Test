@@ -8,7 +8,7 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         configLoader.LoadConfig();
-        PlayerMovement.Initialize(configLoader.GetPlayerData());
+        PlayerMovement.Initialize(configLoader.GetPlayerData(), inputManager);
     }
 
     void Update()

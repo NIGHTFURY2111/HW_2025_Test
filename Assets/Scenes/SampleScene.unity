@@ -132,6 +132,7 @@ GameObject:
   - component: {fileID: 159676158}
   - component: {fileID: 159676157}
   - component: {fileID: 159676156}
+  - component: {fileID: 159676161}
   m_Layer: 0
   m_Name: Doofus
   m_TagString: Untagged
@@ -164,7 +165,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 0
+  m_Constraints: 112
   m_CollisionDetection: 0
 --- !u!65 &159676157
 BoxCollider:
@@ -258,6 +259,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &159676161
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 159676155}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6a0ab365440d304082eb2cb9e54c4d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMovementhandler
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -551,8 +564,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9a510aec093e726409c91d6d788da6e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
+  PlayerMovement: {fileID: 159676161}
   inputManager: {fileID: 11400000, guid: f50b1f3e79aa32d429ae8304cfc27a1d, type: 2}
-  configLoader: {fileID: 0}
+  configLoader: {fileID: 11400000, guid: 2f4f1cb3e96152542bc795012116cd02, type: 2}
 --- !u!4 &667352151
 Transform:
   m_ObjectHideFlags: 0
