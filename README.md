@@ -4,7 +4,7 @@ A 3D platformer where players jump across dynamically spawning platforms that di
 
 ## Gameplay
 
-[Video showcase](./Gameplay/)
+[![Gameplay Video](https://img.youtube.com/vi/yRpYu3oWKUs/0.jpg)](https://youtu.be/yRpYu3oWKUs)
 
 ## Features
 
