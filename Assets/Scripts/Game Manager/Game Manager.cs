@@ -11,27 +11,39 @@ public class GameManager : MonoBehaviour
     
     private int currentScore;
     private bool isGameActive;
+    private bool isInitialized;
     
     public static event Action OnGameOver;
     public static event Action OnGameStart;
     
     private void Start()
-    {
-        InitializeGame();
-        SubscribeToEvents();
+    {        
+        if (configLoader.LoadConfig())
+        {
+            PlayerData playerData = configLoader.GetPlayerData();
+            PulpitData pulpitData = configLoader.GetPulpitData();
+            
+            if (playerData == null || pulpitData == null)
+            {
+                Debug.LogError("GameManager: Config data is null. Cannot initialize.");
+                return;
+            }
+            
+            playerMovement.Initialize(playerData, inputManager);
+            isInitialized = true;
+            SubscribeToEvents();
+        }
+        else
+        {
+            Debug.LogError("Failed to load config. Game cannot start.");
+        }
     }
 
     private void OnDestroy()
     {
         UnsubscribeFromEvents();
     }
-    
-    private void InitializeGame()
-    {
-        configLoader.LoadConfig();
-        playerMovement.Initialize(configLoader.GetPlayerData(), inputManager);
-    }
-    
+       
     private void SubscribeToEvents()
     {
         PulpitManager.OnPulpitVisited += HandlePulpitVisited;
@@ -61,10 +73,21 @@ public class GameManager : MonoBehaviour
     
     public void StartGame()
     {
+        if (!isInitialized)
+        {
+            Debug.LogError("GameManager: Cannot start game - not initialized!");
+            return;
+        }
+        
         isGameActive = true;
         currentScore = 0;
         
-        pulpitManager.Initialize(configLoader.GetPulpitData());
+        PulpitData pulpitData = configLoader.GetPulpitData();
+        if (pulpitData != null)
+        {
+            pulpitManager.Initialize(pulpitData);
+        }
+        
         playerMovement.ResetPlayer();
         
         OnGameStart?.Invoke();
@@ -80,6 +103,12 @@ public class GameManager : MonoBehaviour
     
     public void RestartGame()
     {
+        if (!isInitialized)
+        {
+            Debug.LogError("GameManager: Cannot restart game - not initialized!");
+            return;
+        }
+        
         pulpitManager.CleanupPulpits();
         StartGame();
     }

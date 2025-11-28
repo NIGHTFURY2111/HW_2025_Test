@@ -10,18 +10,22 @@ public class PlayerMovementhandler : MonoBehaviour
     [Header("Movement Settings")]
     [SerializeField] private float fallDeathThreshold = -10f;
     
-    private float speed;
     private RawInputManager inputManager;
     private Rigidbody rb;
     private Vector3 startPosition;
+    private float speed;
     private bool isDead;
     private bool isGameActive;
+    private bool isInitialized;
     
     public static event Action OnPlayerDeath;
 
     private void Awake()
     {
-        TryGetComponent(out rb);
+        if (!TryGetComponent(out rb))
+        {
+            Debug.LogError("PlayerMovementhandler: Rigidbody component not found!");
+        }
         startPosition = transform.position;
     }
     
@@ -37,7 +41,7 @@ public class PlayerMovementhandler : MonoBehaviour
     
     private void FixedUpdate()
     {
-        if (!isGameActive || isDead)
+        if (!CanMove())
         {
             StopMovement();
             return;
@@ -49,8 +53,15 @@ public class PlayerMovementhandler : MonoBehaviour
     
     public void Initialize(PlayerData data, RawInputManager managerRef)
     {
+        if (data == null ||managerRef == null)
+        {
+            Debug.LogError("refernce is null!");
+            return;
+        }
+        
         speed = data.speed;
         inputManager = managerRef;
+        isInitialized = true;
     }
     
     public void ResetPlayer()
@@ -63,19 +74,10 @@ public class PlayerMovementhandler : MonoBehaviour
 
     private void ApplyMovement()
     {
-        Vector3 horizontalVelocity = InputToGlobalPlane(inputManager.Move()) * speed;
+        if (rb == null || inputManager == null) return;
+        
+        Vector3 horizontalVelocity = new Vector3(inputManager.Move().x, 0, inputManager.Move().y).normalized * speed;
         rb.linearVelocity = new Vector3(horizontalVelocity.x, rb.linearVelocity.y, horizontalVelocity.z);
-    }
-
-    private Vector3 InputToGlobalPlane(Vector2 inputVector)
-    {
-        return new Vector3(inputVector.x, 0, inputVector.y).normalized;
-    }
-    
-    private void StopMovement()
-    {
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
     }
     
     private void CheckDeath()
@@ -95,9 +97,24 @@ public class PlayerMovementhandler : MonoBehaviour
         StopMovement();
         OnPlayerDeath?.Invoke();
     }
+
+    private void StopMovement()
+    {
+        if (rb == null) return;
+        
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+    }
+    
+    private bool CanMove() => isGameActive && !isDead && isInitialized && rb != null;
     
     private void EnablePlayer()
     {
+        if (!isInitialized)
+        {
+            Debug.LogWarning("PlayerMovementhandler: Cannot enable player - not initialized!");
+            return;
+        }
         isGameActive = true;
     }
 }

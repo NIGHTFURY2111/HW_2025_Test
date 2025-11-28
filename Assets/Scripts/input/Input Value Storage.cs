@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using UnityEngine.InputSystem;
 
 /// <summary>
 /// Stores and manages input values from the Input System.
@@ -13,7 +12,8 @@ public class InputValueStorage
         Value = Vector2.zero;
     }
 
-    public void UpdateValue(Vector2 value) => Value = value;
-
-    public Vector2 GetValue => Value;
+    public void UpdateValue(Vector2 value)
+    {
+        Value = value;
+    }
 }

@@ -18,17 +18,21 @@ public class GameUIManager : MonoBehaviour
     [Header("Game Over Text")]
     [SerializeField] private TMP_Text finalScoreText;
     
+    [Header("References")]
+    [SerializeField] private GameManager gameManager;
+    
     public static event Action OnStartGame;
     public static event Action OnRestartGame;
     
     private void Awake()
     {
-        SubscribeToButtons();
+        startButton?.onClick.AddListener(HandleStartGame);
+        restartButton?.onClick.AddListener(HandleRestartGame);
     }
     
     private void Start()
     {
-        ShowStartScreen();
+        ShowPanel(startPanel);
     }
     
     private void OnEnable()
@@ -41,98 +45,91 @@ public class GameUIManager : MonoBehaviour
     {
         GameManager.OnGameStart -= ShowHUD;
         GameManager.OnGameOver -= ShowGameOver;
+        
+        CleanupAnimations();
     }
 
     private void OnDestroy()
     {
-        UnsubscribeFromButtons();
+        startButton?.onClick.RemoveListener(HandleStartGame);
+        restartButton?.onClick.RemoveListener(HandleRestartGame);
+        
+        CleanupAnimations();
     }
     
-    private void SubscribeToButtons()
+    private void CleanupAnimations()
     {
-        if (startButton != null)
-            startButton.onClick.AddListener(HandleStartGame);
-        
-        if (restartButton != null)
-            restartButton.onClick.AddListener(HandleRestartGame);
+        if (startPanel != null) startPanel.transform.DOKill();
+        if (gameOverPanel != null) gameOverPanel.transform.DOKill();
+        if (hudPanel != null) hudPanel.transform.DOKill();
+        if (startButton != null) startButton.transform.DOKill();
+        if (restartButton != null) restartButton.transform.DOKill();
     }
     
-    private void UnsubscribeFromButtons()
+    private void ShowPanel(params GameObject[] panelsToShow)
     {
-        if (startButton != null)
-            startButton.onClick.RemoveListener(HandleStartGame);
+        SetPanelState(startPanel, false);
+        SetPanelState(gameOverPanel, false);
+        SetPanelState(hudPanel, false);
         
-        if (restartButton != null)
-            restartButton.onClick.RemoveListener(HandleRestartGame);
-    }
-    
-    private void ShowStartScreen()
-    {
-        SetPanelActive(startPanel, true);
-        SetPanelActive(gameOverPanel, false);
-        SetPanelActive(hudPanel, false);
-        
-        AnimatePanelEntry(startPanel);
+        foreach (GameObject panel in panelsToShow)
+        {
+            SetPanelState(panel, true);
+            AnimatePanelEntry(panel);
+        }
     }
     
     private void ShowHUD()
     {
-        SetPanelActive(startPanel, false);
-        SetPanelActive(gameOverPanel, false);
-        SetPanelActive(hudPanel, true);
+        ShowPanel(hudPanel);
     }
     
     private void ShowGameOver()
     {
-        SetPanelActive(hudPanel, false);
-        SetPanelActive(gameOverPanel, true);
-        
-        UpdateFinalScore();
-        AnimatePanelEntry(gameOverPanel);
+        if (finalScoreText != null && gameManager != null)
+        {
+            finalScoreText.text = $"Final Score: {gameManager.GetCurrentScore()}";
+        }
+        ShowPanel(gameOverPanel);
     }
     
     private void HandleStartGame()
     {
+        if (startButton != null)
+        {
+            AnimateButtonPress(startButton);
+        }
         OnStartGame?.Invoke();
-        AnimateButtonPress(startButton);
     }
     
     private void HandleRestartGame()
     {
+        if (restartButton != null)
+        {
+            AnimateButtonPress(restartButton);
+        }
         OnRestartGame?.Invoke();
-        AnimateButtonPress(restartButton);
     }
     
-    private void UpdateFinalScore()
+    private void SetPanelState(GameObject panel, bool active)
     {
-        GameManager gameManager = FindObjectOfType<GameManager>();
-        if (gameManager != null && finalScoreText != null)
-        {
-            finalScoreText.text = $"Final Score: {gameManager.GetCurrentScore()}";
-        }
-    }
-    
-    private void SetPanelActive(GameObject panel, bool active)
-    {
-        if (panel != null)
-        {
-            panel.SetActive(active);
-        }
+        panel?.SetActive(active);
     }
     
     private void AnimatePanelEntry(GameObject panel)
     {
         if (panel == null) return;
         
+        panel.transform.DOKill();
         panel.transform.localScale = Vector3.zero;
         panel.transform.DOScale(Vector3.one, 0.5f).SetEase(Ease.OutBack);
     }
     
     private void AnimateButtonPress(Button button)
     {
-        if (button != null)
-        {
-            button.transform.DOPunchScale(Vector3.one * 0.2f, 0.3f, 5, 0.5f);
-        }
+        if (button == null) return;
+        
+        button.transform.DOKill();
+        button.transform.DOPunchScale(Vector3.one * 0.2f, 0.3f, 5, 0.5f);
     }
 }

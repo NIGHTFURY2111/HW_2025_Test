@@ -14,8 +14,6 @@ public class ScoreDisplay : MonoBehaviour
     [SerializeField] private float basePunchRotation = 10f;
     [SerializeField] private float maxPunchScale = 0.8f;
     [SerializeField] private float maxPunchRotation = 25f;
-    
-    [Header("Scaling")]
     [SerializeField] private int scoreForMaxEffect = 30;
     
     private int currentScore;
@@ -25,17 +23,31 @@ public class ScoreDisplay : MonoBehaviour
     
     private void Awake()
     {
-        CacheOriginalTransform();
+        if (scoreText != null)
+        {
+            originalScale = scoreText.transform.localScale;
+            originalRotation = scoreText.transform.localRotation;
+            originalColor = scoreText.color;
+        }
     }
     
     private void OnEnable()
     {
         PulpitManager.OnPulpitVisited += OnScoreChanged;
+        GameManager.OnGameStart += ResetScore;
     }
     
     private void OnDisable()
     {
         PulpitManager.OnPulpitVisited -= OnScoreChanged;
+        GameManager.OnGameStart -= ResetScore;
+        
+        CleanupAnimations();
+    }
+
+    private void OnDestroy()
+    {
+        CleanupAnimations();
     }
     
     private void Start()
@@ -50,13 +62,11 @@ public class ScoreDisplay : MonoBehaviour
         PlayScoreAnimation();
     }
     
-    private void CacheOriginalTransform()
+    private void ResetScore()
     {
-        if (scoreText == null) return;
-        
-        originalScale = scoreText.transform.localScale;
-        originalRotation = scoreText.transform.localRotation;
-        originalColor = Color.white;
+        currentScore = 0;
+        UpdateScoreText();
+        ResetTransform();
     }
     
     private void UpdateScoreText()
@@ -72,34 +82,58 @@ public class ScoreDisplay : MonoBehaviour
         if (scoreText == null) return;
         
         float intensity = Mathf.Clamp01((float)currentScore / scoreForMaxEffect);
-        float punchScale = Mathf.Lerp(basePunchScale, maxPunchScale, intensity);
-        float punchRotation = Mathf.Lerp(basePunchRotation, maxPunchRotation, intensity);
         
-        KillExistingTweens();
-        ResetTransform();
-        
-        scoreText.transform.DOPunchScale(Vector3.one * punchScale, 0.5f, 10, 1f)
-            .OnComplete(() => scoreText.transform.localScale = originalScale);
-        
-        scoreText.transform.DOPunchRotation(new Vector3(0, 0, punchRotation), 0.5f, 10, 1f)
-            .OnComplete(() => scoreText.transform.localRotation = originalRotation);
-        
-        Color flashColor = Color.Lerp(new Color(1f, 1f, 0.5f), Color.yellow, intensity);
-        scoreText.DOColor(flashColor, 0.1f)
-            .SetLoops(2, LoopType.Yoyo)
-            .OnComplete(() => scoreText.color = originalColor);
-    }
-    
-    private void KillExistingTweens()
-    {
         DOTween.Kill(scoreText.transform);
         DOTween.Kill(scoreText);
+        ResetTransform();
+        
+        scoreText.transform.DOPunchScale(Vector3.one * Mathf.Lerp(basePunchScale, maxPunchScale, intensity), 0.5f, 10, 1f)
+            .SetAutoKill(true)
+            .OnComplete(() => 
+            {
+                if (scoreText != null)
+                {
+                    scoreText.transform.localScale = originalScale;
+                }
+            });
+        
+        scoreText.transform.DOPunchRotation(new Vector3(0, 0, Mathf.Lerp(basePunchRotation, maxPunchRotation, intensity)), 0.5f, 10, 1f)
+            .SetAutoKill(true)
+            .OnComplete(() => 
+            {
+                if (scoreText != null)
+                {
+                    scoreText.transform.localRotation = originalRotation;
+                }
+            });
+        
+        scoreText.DOColor(Color.Lerp(new Color(1f, 1f, 0.5f), Color.yellow, intensity), 0.1f)
+            .SetLoops(2, LoopType.Yoyo)
+            .SetAutoKill(true)
+            .OnComplete(() => 
+            {
+                if (scoreText != null)
+                {
+                    scoreText.color = originalColor;
+                }
+            });
     }
     
     private void ResetTransform()
     {
+        if (scoreText == null) return;
+        
         scoreText.transform.localScale = originalScale;
         scoreText.transform.localRotation = originalRotation;
         scoreText.color = originalColor;
+    }
+    
+    private void CleanupAnimations()
+    {
+        if (scoreText != null)
+        {
+            DOTween.Kill(scoreText.transform);
+            DOTween.Kill(scoreText);
+        }
     }
 }
