@@ -7,6 +7,8 @@ using UnityEngine;
 /// </summary>
 public class PulpitManager : MonoBehaviour
 {
+    #region Serialized Fields
+    
     [Header("References")]
     [SerializeField] private GameObject pulpitPrefab;
     [SerializeField] private Transform pulpitParent;
@@ -15,27 +17,55 @@ public class PulpitManager : MonoBehaviour
     [SerializeField] private Vector3 startPosition = Vector3.zero;
     [SerializeField] private float pulpitSize = 9f;
     
+    #endregion
+    
+    #region Constants
+    
     private const int MAX_PULPITS = 2;
+    
+    #endregion
+    
+    #region Private Fields
     
     private PulpitData pulpitData;
     private List<Pulpit> activePulpits = new List<Pulpit>();
     private Vector3 lastSpawnPosition;
     private bool isGameActive;
     
+    #endregion
+    
+    #region Events
+    
+    /// <summary>
+    /// Event triggered when a player visits a pulpit.
+    /// </summary>
     public static event Action<int> OnPulpitVisited;
     
+    #endregion
+    
+    #region Unity Lifecycle
+    
+    /// <summary>
+    /// Subscribes to game events.
+    /// </summary>
     private void OnEnable()
     {
         GameManager.OnGameStart += EnableSpawning;
         GameManager.OnGameOver += DisableSpawning;
     }
     
+    /// <summary>
+    /// Unsubscribes from game events.
+    /// </summary>
     private void OnDisable()
     {
         GameManager.OnGameStart -= EnableSpawning;
         GameManager.OnGameOver -= DisableSpawning;
     }
     
+    /// <summary>
+    /// Updates active pulpit timers and checks for new spawns.
+    /// </summary>
     private void Update()
     {
         if (!isGameActive || pulpitData == null) return;
@@ -44,16 +74,27 @@ public class PulpitManager : MonoBehaviour
         CheckSpawnNewPulpit();
     }
 
+    /// <summary>
+    /// Cleans up all pulpits when destroyed.
+    /// </summary>
     private void OnDestroy()
     {
         CleanupPulpits();
     }
     
+    #endregion
+    
+    #region Public Methods
+    
+    /// <summary>
+    /// Initializes the pulpit manager with configuration data.
+    /// </summary>
+    /// <param name="data">Pulpit configuration data.</param>
     public void Initialize(PulpitData data)
     {
         if (data == null || pulpitPrefab == null)
         {
-            Debug.LogError("reference is null!");
+            Debug.LogError("PulpitManager: Reference is null!");
             return;
         }
         
@@ -62,6 +103,30 @@ public class PulpitManager : MonoBehaviour
         SpawnPulpitAt(startPosition);
     }
     
+    /// <summary>
+    /// Removes and destroys all active pulpits.
+    /// </summary>
+    public void CleanupPulpits()
+    {
+        for (int i = activePulpits.Count - 1; i >= 0; i--)
+        {
+            Pulpit pulpit = activePulpits[i];
+            if (pulpit != null)
+            {
+                UnsubscribeFromPulpit(pulpit);
+                Destroy(pulpit.gameObject);
+            }
+        }
+        activePulpits.Clear();
+    }
+    
+    #endregion
+    
+    #region Pulpit Management
+    
+    /// <summary>
+    /// Updates timers for all active pulpits.
+    /// </summary>
     private void UpdatePulpitTimers()
     {
         for (int i = activePulpits.Count - 1; i >= 0; i--)
@@ -73,6 +138,9 @@ public class PulpitManager : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Checks if a new pulpit should be spawned based on timing.
+    /// </summary>
     private void CheckSpawnNewPulpit()
     {
         if (activePulpits.Count == 0 || activePulpits.Count >= MAX_PULPITS) 
@@ -85,6 +153,10 @@ public class PulpitManager : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Spawns a pulpit at the specified position.
+    /// </summary>
+    /// <param name="position">World position to spawn the pulpit.</param>
     private void SpawnPulpitAt(Vector3 position)
     {
         if (pulpitPrefab == null)
@@ -118,6 +190,14 @@ public class PulpitManager : MonoBehaviour
         lastSpawnPosition = position;
     }
     
+    #endregion
+    
+    #region Position Calculation
+    
+    /// <summary>
+    /// Calculates a valid position for the next pulpit spawn.
+    /// </summary>
+    /// <returns>World position for the next pulpit.</returns>
     private Vector3 GetNextPulpitPosition()
     {
         Vector3[] directions = { Vector3.forward, Vector3.back, Vector3.right, Vector3.left };
@@ -137,6 +217,11 @@ public class PulpitManager : MonoBehaviour
             : lastSpawnPosition + directions[UnityEngine.Random.Range(0, directions.Length)] * pulpitSize;
     }
     
+    /// <summary>
+    /// Checks if a position is already occupied by an active pulpit.
+    /// </summary>
+    /// <param name="position">Position to check.</param>
+    /// <returns>True if occupied, false otherwise.</returns>
     private bool IsPositionOccupied(Vector3 position)
     {
         foreach (Pulpit pulpit in activePulpits)
@@ -149,6 +234,14 @@ public class PulpitManager : MonoBehaviour
         return false;
     }
     
+    #endregion
+    
+    #region Event Handlers
+    
+    /// <summary>
+    /// Handles pulpit destruction events.
+    /// </summary>
+    /// <param name="pulpit">The pulpit being destroyed.</param>
     private void HandlePulpitDestroyed(Pulpit pulpit)
     {
         if (pulpit != null)
@@ -158,11 +251,19 @@ public class PulpitManager : MonoBehaviour
         activePulpits.Remove(pulpit);
     }
     
+    /// <summary>
+    /// Handles player entering a pulpit.
+    /// </summary>
+    /// <param name="pulpit">The pulpit the player entered.</param>
     private void HandlePlayerEntered(Pulpit pulpit)
     {
         OnPulpitVisited?.Invoke(1);
     }
     
+    /// <summary>
+    /// Unsubscribes from a pulpit's events.
+    /// </summary>
+    /// <param name="pulpit">Pulpit to unsubscribe from.</param>
     private void UnsubscribeFromPulpit(Pulpit pulpit)
     {
         if (pulpit == null) return;
@@ -171,21 +272,13 @@ public class PulpitManager : MonoBehaviour
         pulpit.OnPlayerEntered -= HandlePlayerEntered;
     }
     
-    public void CleanupPulpits()
-    {
-        for (int i = activePulpits.Count - 1; i >= 0; i--)
-        {
-            Pulpit pulpit = activePulpits[i];
-            if (pulpit != null)
-            {
-                UnsubscribeFromPulpit(pulpit);
-                Destroy(pulpit.gameObject);
-            }
-        }
-        activePulpits.Clear();
-    }
+    #endregion
+    
+    #region State Management
     
     private void EnableSpawning() => isGameActive = true;
     
     private void DisableSpawning() => isGameActive = false;
+    
+    #endregion
 }

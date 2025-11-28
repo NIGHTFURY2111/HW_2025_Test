@@ -9,6 +9,8 @@ using TMPro;
 [RequireComponent(typeof(Collider))]
 public class Pulpit : MonoBehaviour
 {
+    #region Serialized Fields
+    
     [Header("Visual Settings")]
     [SerializeField] private Color normalColor = Color.green;
     [SerializeField] private Color warningColor = Color.yellow;
@@ -23,6 +25,10 @@ public class Pulpit : MonoBehaviour
     [SerializeField] private float warningThreshold = 0.3f;
     [SerializeField] private float dangerThreshold = 0.15f;
     
+    #endregion
+    
+    #region Private Fields
+    
     private float lifetime;
     private float elapsedTime;
     private bool hasPlayerVisited;
@@ -30,13 +36,35 @@ public class Pulpit : MonoBehaviour
     private Vector3 originalScale;
     private Vector3 timerOriginalScale;
     private Quaternion timerOriginalRotation;
+    private VisualState currentState = VisualState.Normal;
+    
+    #endregion
+    
+    #region Enums
     
     private enum VisualState { Normal, Warning, Danger }
-    private VisualState currentState = VisualState.Normal;
-
+    
+    #endregion
+    
+    #region Events
+    
+    /// <summary>
+    /// Event triggered when this pulpit is destroyed.
+    /// </summary>
     public event Action<Pulpit> OnPulpitDestroyed;
+    
+    /// <summary>
+    /// Event triggered when the player enters this pulpit.
+    /// </summary>
     public event Action<Pulpit> OnPlayerEntered;
     
+    #endregion
+    
+    #region Unity Lifecycle
+    
+    /// <summary>
+    /// Initializes references and stores original transform values.
+    /// </summary>
     private void Awake()
     {
         originalScale = transform.localScale;
@@ -53,11 +81,17 @@ public class Pulpit : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Plays spawn animation when enabled.
+    /// </summary>
     private void OnEnable()
     {
         PlaySpawnAnimation();
     }
     
+    /// <summary>
+    /// Resets transforms when disabled.
+    /// </summary>
     private void OnDisable()
     {
         KillAllTweens();
@@ -65,6 +99,9 @@ public class Pulpit : MonoBehaviour
         ResetTimerTransform();
     }
 
+    /// <summary>
+    /// Cleans up tweens and materials when destroyed.
+    /// </summary>
     private void OnDestroy()
     {
         KillAllTweens();
@@ -76,6 +113,10 @@ public class Pulpit : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Detects player collision and triggers events.
+    /// </summary>
+    /// <param name="other">The collider that entered this trigger.</param>
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player") && !hasPlayerVisited)
@@ -95,6 +136,14 @@ public class Pulpit : MonoBehaviour
         }
     }
     
+    #endregion
+    
+    #region Public Methods
+    
+    /// <summary>
+    /// Initializes the pulpit with a lifetime value.
+    /// </summary>
+    /// <param name="lifetimeValue">How long the pulpit should exist before destroying.</param>
     public void Initialize(float lifetimeValue)
     {
         lifetime = lifetimeValue;
@@ -110,6 +159,10 @@ public class Pulpit : MonoBehaviour
         UpdateTimerDisplay();
     }
     
+    /// <summary>
+    /// Updates the pulpit's lifetime timer.
+    /// </summary>
+    /// <param name="deltaTime">Time elapsed since last update.</param>
     public void UpdateTimer(float deltaTime)
     {
         elapsedTime += deltaTime;
@@ -123,8 +176,20 @@ public class Pulpit : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Checks if enough time has passed to spawn the next pulpit.
+    /// </summary>
+    /// <param name="spawnTime">Required time threshold.</param>
+    /// <returns>True if next pulpit should spawn, false otherwise.</returns>
     public bool ShouldSpawnNext(float spawnTime) => elapsedTime >= spawnTime;
     
+    #endregion
+    
+    #region Visual Updates
+    
+    /// <summary>
+    /// Updates the timer text display.
+    /// </summary>
     private void UpdateTimerDisplay()
     {
         if (timerText == null) return;
@@ -138,6 +203,10 @@ public class Pulpit : MonoBehaviour
                          Color.white;
     }
     
+    /// <summary>
+    /// Updates visual state based on remaining time.
+    /// </summary>
+    /// <param name="normalizedTime">Normalized time remaining (0-1).</param>
     private void UpdateVisualState(float normalizedTime)
     {
         if (pulpitMaterial == null) return;
@@ -153,6 +222,10 @@ public class Pulpit : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Transitions visual effects to a new state.
+    /// </summary>
+    /// <param name="state">Target visual state.</param>
     private void TransitionToState(VisualState state)
     {
         KillAllTweens();
@@ -167,6 +240,9 @@ public class Pulpit : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Animates color and transparency transitions for state changes.
+    /// </summary>
     private void AnimateStateTransition(Color color, float colorDuration, bool loopColor, 
         float fadeTarget, float fadeDuration, bool includePulse)
     {
@@ -202,6 +278,13 @@ public class Pulpit : MonoBehaviour
         }
     }
     
+    #endregion
+    
+    #region Animation Methods
+    
+    /// <summary>
+    /// Plays the spawn animation sequence.
+    /// </summary>
     private void PlaySpawnAnimation()
     {
         if (transform != null)
@@ -227,6 +310,9 @@ public class Pulpit : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Destroys the pulpit with animation.
+    /// </summary>
     private void DestroyPulpit()
     {
         KillAllTweens();
@@ -254,6 +340,13 @@ public class Pulpit : MonoBehaviour
         }
     }
     
+    #endregion
+    
+    #region Utility Methods
+    
+    /// <summary>
+    /// Resets timer transform to original values.
+    /// </summary>
     private void ResetTimerTransform()
     {
         if (timerText == null) return;
@@ -262,6 +355,9 @@ public class Pulpit : MonoBehaviour
         timerText.transform.localRotation = timerOriginalRotation;
     }
     
+    /// <summary>
+    /// Kills all active DOTween animations.
+    /// </summary>
     private void KillAllTweens()
     {
         if (transform != null) DOTween.Kill(transform);
@@ -271,4 +367,6 @@ public class Pulpit : MonoBehaviour
             DOTween.Kill(timerText.transform);
         }
     }
+    
+    #endregion
 }
